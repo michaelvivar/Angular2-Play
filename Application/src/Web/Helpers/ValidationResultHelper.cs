@@ -1,62 +1,119 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Linq;
-using System.Threading.Tasks;
+using System.ComponentModel.DataAnnotations;
+using System.Linq.Expressions;
+using System.Reflection;
+using Web.Helpers.Validators;
 
 namespace Web.Helpers
 {
+    public interface IValidationResultHelper<TModel>
+    {
+        IValidator<IStringValidator> Validate(Expression<Func<TModel, string>> property);
+        IValidator<IDateTimeValidator> Validate(Expression<Func<TModel, DateTime?>> property);
+        IValidator<INumberValidator> Validate(Expression<Func<TModel, int?>> property);
+        IValidator<ITypeValidator> Validate<T>(Expression<Func<TModel, T>> property);
+        IConditionValidator IF(bool expression);
+
+        List<KeyValuePair<string, string>> Errors { get; set; }
+        bool Failed { get; set; }
+    }
+
     public class ValidationResultHelper
     {
+        public bool Failed { get; set; }
+        public List<KeyValuePair<string, string>> Errors { get; set; }
 
-    }
-
-    public abstract class Validator<T1, T2> where T1 : IValidator where T2 : IValidator
-    {
-        public T1 ErrorMsg(string message)
+        public void AddError(string message, string property)
         {
-            return (T1)Instance();
-        }
-
-        public T2 Required(bool require)
-        {
-            return (T2)Instance();
-        }
-
-        protected abstract IValidator Instance();
-    }
-
-    public class StringValidator : Validator<IStringValidator1, IStringValidator2>,
-        IValidator_Required<IStringValidator2>,
-        IStringValidator1, IStringValidator2, IValidator
-    {
-        public IStringValidator2 MinLength(int length)
-        {
-            return this;
-        }
-
-        protected override IValidator Instance()
-        {
-            return this;
+            Errors.Add(new KeyValuePair<string, string>(property, message)); 
+            Failed = true;
         }
     }
 
-    public interface IValidator
+    public class ValidationResultHelper<TModel> : ValidationResultHelper, IValidationResultHelper<TModel>
     {
+        private readonly TModel Model;
+        public ValidationResultHelper(TModel model) { Model = model; Errors = new List<KeyValuePair<string, string>>(); }
 
+        private string GetPropertyName<T>(Expression<Func<TModel, T>> expression)
+        {
+            if (expression.Body is MemberExpression)
+            {
+                return ((MemberExpression)expression.Body).Member.Name;
+            }
+            else
+            {
+                var op = ((UnaryExpression)expression.Body).Operand;
+                return ((MemberExpression)op).Member.Name;
+            }
+        }
+        private object GetPropertyValue(string property)
+        {
+            Type type = typeof(TModel);
+            return type.GetProperty(property).GetValue(Model, null);
+        }
+        private T GetPropertyValue<T>(string property)
+        {
+            Type type = typeof(TModel);
+            object value = type.GetProperty(property).GetValue(Model, null);
+
+            var t = typeof(T);
+            if (t.GetTypeInfo().IsGenericType && t.GetGenericTypeDefinition().Equals(typeof(Nullable<>)))
+            {
+                if (value == null)
+                    return default(T);
+
+                t = Nullable.GetUnderlyingType(t);
+            }
+
+            return (T)Convert.ChangeType(value, t);
+        }
+
+        public void AddError(string message, Expression<Func<TModel, object>> property)
+        {
+            AddError(message, GetPropertyName(property));
+        }
+
+        public IConditionValidator IF(bool expression)
+        {
+            return new ConditionValidator(this).IF(expression);
+        }
+        public IValidator<IStringValidator> Validate(Expression<Func<TModel, string>> property)
+        {
+            string name = GetPropertyName(property);
+            string value = GetPropertyValue<string>(name);
+            return new StringValidator<TModel>(this, new ModelProperty<string> { Name = name, Value = value });
+        }
+        public IValidator<INumberValidator> Validate(Expression<Func<TModel, int?>> property)
+        {
+            string name = GetPropertyName(property);
+            int? value = GetPropertyValue<int?>(name);
+            return new NumberValidator<TModel>(this, new ModelProperty<int?> { Name = name, Value = value });
+        }
+        public IValidator<IDateTimeValidator> Validate(Expression<Func<TModel, DateTime?>> property)
+        {
+            string name = GetPropertyName(property);
+            DateTime? value = GetPropertyValue<DateTime?>(name);
+            return new DateTimeValidator<TModel>(this, new ModelProperty<DateTime?> { Name = name, Value = value });
+        }
+        public IValidator<ITypeValidator> Validate<T>(Expression<Func<TModel, T>> property)
+        {
+            string name = GetPropertyName(property);
+            T value = GetPropertyValue<T>(name);
+            return new TypeValidator<TModel, T>(this, new ModelProperty<T> { Name = name, Value = value });
+        }
     }
 
-    public interface IValidator_Required<T> : IValidator
+    public class ModelProperty<T> : IModelProperty<T>
     {
-        T Required(bool required);
+        public string Name { get; set; }
+        public T Value { get; set; }
     }
 
-    public interface IStringValidator1 : IValidator
+    public interface IModelProperty<T>
     {
-        IStringValidator2 MinLength(int length);
-    }
-
-    public interface IStringValidator2 : IStringValidator1
-    {
-        IStringValidator1 ErrorMsg(string message);
+        string Name { get; set; }
+        T Value { get; set; }
     }
 }

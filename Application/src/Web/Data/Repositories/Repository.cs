@@ -1,14 +1,13 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Threading.Tasks;
-using Microsoft.EntityFrameworkCore;
 using System.Linq.Expressions;
+using System.Threading.Tasks;
 using Web.Data.Entities;
 
 namespace Web.Data.Repositories
 {
-    public class Repository<TEntity> : IRepository, IRepository<TEntity> where TEntity : Entity
+    public class Repository<TEntity> : IRepository where TEntity : Entity
     {
         private readonly DataContext _context;
         public Repository(DataContext context)
@@ -16,60 +15,59 @@ namespace Web.Data.Repositories
             _context = context;
         }
 
-        public IRepository Add(TEntity entity)
+        protected IRepository Add(TEntity entity)
         {
             _context.Set<TEntity>().Add(entity);
             return this;
         }
 
-        public IRepository AddRange(IEnumerable<TEntity> entities)
+        protected IRepository AddRange(IEnumerable<TEntity> entities)
         {
-            throw new NotImplementedException();
+            _context.Set<TEntity>().AddRange(entities);
+            return this;
         }
 
-        public IQueryable<TEntity> Get()
+        protected IQueryable<TEntity> Get()
         {
             return _context.Set<TEntity>();
         }
 
-        public IQueryable<TEntity> Get(Expression<Func<TEntity, bool>> predicate)
+        protected IQueryable<TEntity> Get(Expression<Func<TEntity, bool>> predicate)
+        {
+            return _context.Set<TEntity>().Where(predicate);
+        }
+
+        protected IRepository Remove(TEntity entity)
+        {
+            _context.Set<TEntity>().Remove(entity);
+            return this;
+        }
+
+        protected IRepository RemoveRange(IEnumerable<TEntity> entities)
+        {
+            _context.Set<TEntity>().RemoveRange(entities);
+            return this;
+        }
+
+        protected IRepository Set(TEntity entity, params Expression<Func<TEntity, object>>[] property)
         {
             throw new NotImplementedException();
         }
 
-        public TEntity Get(int id)
+        protected TEntity SingleOrDefault(Expression<Func<TEntity, bool>> predicate)
         {
-            throw new NotImplementedException();
+            return _context.Set<TEntity>().SingleOrDefault(predicate);
         }
 
-        public IRepository Remove(TEntity entity)
+        protected IRepository Update(TEntity entity)
         {
-            throw new NotImplementedException();
+            _context.Set<TEntity>().Update(entity);
+            return this;
         }
 
-        public IRepository RemoveRange(IEnumerable<TEntity> entities)
+        protected IRepository Update(TEntity entity, params Expression<Func<TEntity, object>>[] exclude)
         {
-            throw new NotImplementedException();
-        }
-
-        public IRepository Set(TEntity entity, params Expression<Func<TEntity, object>>[] property)
-        {
-            throw new NotImplementedException();
-        }
-
-        public TEntity SingleOrDefault(Expression<Func<TEntity, bool>> predicate)
-        {
-            throw new NotImplementedException();
-        }
-
-        public IRepository Update(TEntity entity)
-        {
-            throw new NotImplementedException();
-        }
-
-        public IRepository Update(TEntity entity, params Expression<Func<TEntity, object>>[] exclude)
-        {
-            throw new NotImplementedException();
+            return this;
         }
 
         public void Save()
@@ -78,7 +76,7 @@ namespace Web.Data.Repositories
         }
     }
 
-    public interface IRepository<TEntity>
+    public interface IRepository<TEntity>   
     {
         IRepository Add(TEntity entity);
         IRepository AddRange(IEnumerable<TEntity> entities);
@@ -87,7 +85,6 @@ namespace Web.Data.Repositories
         IRepository Update(TEntity entity);
         IRepository Update(TEntity entity, params Expression<Func<TEntity, object>>[] exclude);
         IRepository Set(TEntity entity, params Expression<Func<TEntity, object>>[] property);
-        TEntity Get(int id);
         TEntity SingleOrDefault(Expression<Func<TEntity, bool>> predicate);
         IQueryable<TEntity> Get();
         IQueryable<TEntity> Get(Expression<Func<TEntity, bool>> predicate);

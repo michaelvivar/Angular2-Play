@@ -10,7 +10,5 @@ namespace Web.Data.Entities
     {
         [Key]
         public int Id { get; set; }
-        public string Remarks { get; set; }
-        public DateTime? CreatedDate { get; set; }
     }
 }

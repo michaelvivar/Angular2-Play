@@ -1,7 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Threading.Tasks;
+﻿
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.EntityFrameworkCore;
@@ -10,6 +7,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Web.Data;
 using Web.Data.Repositories;
+using Web.Validators;
 
 namespace Web
 {
@@ -45,7 +43,10 @@ namespace Web
 
             services.AddMvc();
 
-            services.AddTransient<IRoomRepository, RoomRepository>();
+            //services.AddMvc(config => config.Filters.Add(new Glo));
+
+            services.AddScoped<ILocationRepository, LocationRepository>();
+            services.AddScoped<ILocationModelValidator, LocationModelValidator>();
         }
 
         // This method gets called by the runtime. Use this method to configure the HTTP request pipeline
@@ -57,6 +58,22 @@ namespace Web
             app.UseApplicationInsightsRequestTelemetry();
 
             app.UseApplicationInsightsExceptionTelemetry();
+
+            app.UseDefaultFiles();
+            app.UseStaticFiles();
+
+            app.Use(async (context, next) =>
+            {
+                await next();
+
+                if (context.Response.StatusCode == 404)
+                    //!Path.HasExtension(context.Request.Path.Value) &&
+                    //!context.Request.Path.Value.StartsWith("/api/"))
+                {
+                    context.Request.Path = "/index.html";
+                    await next();
+                }
+            });
 
             app.UseMvc();
         }

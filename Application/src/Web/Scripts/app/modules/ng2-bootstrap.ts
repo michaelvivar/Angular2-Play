@@ -1,0 +1,1 @@
+﻿export { ModalModule } from '../../ng2-bootstrap/modal/modal.module';
