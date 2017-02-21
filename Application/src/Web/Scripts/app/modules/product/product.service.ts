@@ -14,10 +14,10 @@ export class ProductService {
     }
 
     public updateProduct(product: IProduct) {
-        return this.http.put('/api/products' + product.id, product);
+        return this.http.put('/api/products/' + product.id, product);
     }
 
     public deleteProduct(id: number) {
-        return this.http.delete('/api/products' + id);
+        return this.http.delete('/api/products/' + id);
     }
 }
